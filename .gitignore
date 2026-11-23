@@ -1,0 +1,9 @@
+out/
+out-run-1/
+out-run-2/
+transcripts.tar.gz
+wallet.json
+*.keypair.json
+.env
+.env.*
+node_modules/
