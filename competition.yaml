@@ -1,0 +1,607 @@
+# bounty-entrants-02, "Get the most paying entrants across the bounties you launch on make.fun": the test version of
+# bounty-entrants-01, the same contest with only its reward, its paid places and its timing changed. An entrant (and its
+# agent) launches one or several bounties of its own on make.fun, each charging an entry fee of at least $0.50, proposed
+# through make.fun's sponsor flow and opened inside this contest's window, and brings people in to enter them and pay
+# their fees; the entry's repository names every bounty it wants counted in BOUNTY.json, as a list. Places go by the
+# counted entrants of the named bounties that count (a bounty counts from its first counted entrant), added bounty by
+# bounty, as the house counts them in make.fun's own database at this contest's deadline, the most first; a tie goes to
+# the higher pot of those bounties, then the earlier receipt. Metric (program/v1 + harness.entry_link on platform makefun
+# naming `counts`, min_entrants 1, creator_share allowed), no judge. Validated by server/competitions/load.ts against
+# contracts/competition.ts; seeded by `npm run db:seed`.
+#
+# THE OWNER'S ASK (2026-11-23, word for word, in order), on a screenshot of bounty-entrants-01's row on /admin's Escrow
+# locks awaiting approval ($500, opened Nov 22, hidden until approved, the reward wallet holding 394.79 USDC, "The reward
+# wallet holds less USDC than this lock"): "let's do a test version of this contest, $250 bounty, starting now, running
+# for 24h"; then "yeah literally just the exact contest we have with prize amount and timing changed and for $
+# distirbution, we can do like, top 50 or something". So the pot ($250), the spread over the top 50 places, the 24 hours
+# of entries and the opening are the owner's; every other key, sentence, sealed tree and check is bounty-entrants-01's.
+# The table is the catalogue's "$250 fifty-place table" (CATALOGUE_TABLES; gta6-cover-art-02's and
+# gta6-trophy-guide-02's), so no new table. bounty-entrants-01 stays as it is (sealed and open, its lock still awaiting
+# the owner): a $250 lock fits the reward wallet's 394.79 USDC alone, not beside that $500 one.
+#
+# OPEN AND PUBLIC ON THE OWNER'S GO (2026-11-23, word for word): "ok whatever do the new slug just be fast about it", after "great so we just need that bounty
+# setup now", on the ask's "starting now". Sealed first as a hidden draft for review (status draft, visibility internal,
+# on REVIEW_DRAFTS), then opened in the same chat: re-dated with scripts/redate-bundle.ts (--unescrowed: no production row
+# held it) to 2026-11-23T07:30:00Z, the first whole hour or half hour the deploys of dev and production leave room for,
+# 24 hours of entries to 2026-11-24T07:30:00Z, status open and visibility public, its block in production's seed
+# catalogue and its OPENED_IN_TURN row, its REVIEW_DRAFTS row retired, SHIPPED_BUNDLE_SHA256 re-pinned. Seeded open, the
+# fund-at-open job records its $250 escrow awaiting the owner's Approve on /admin (Escrow locks awaiting approval;
+# .cosmos/rules/escrow-approval.mdc): nothing is locked without it, never by an agent, and until its lock lands the
+# bounty is hidden from everyone but admins, announced nowhere and takes no entry (no unescrowed fallback). From the
+# opening no byte of this directory changes (a fix is a new slug).
+#
+# The design below is bounty-entrants-01's, carried word for word (its header holds the history of the ask that made it,
+# 2026-11-19, and its re-shape, 2026-11-21).
+#
+# What wins, and what it beats. The entry is bounties on make.fun itself: tasks its entrant designed, proposed, funded
+# and opened, that real people paid to enter. The winner is the entrant whose bounties drew the most distinct paying
+# entrants by the deadline, a measure no rubric can argue with: each one a person who found a task worth a fee. The
+# public alternative is a contest a person runs by hand on another site, ranked nowhere against anyone else's; here
+# every entrant's bounties are ranked on one public count, and every one grows make.fun's own catalogue of paid
+# bounties. What the house checks is each bounty (the sponsor's account, its approval, its window, its fee, one account a
+# bounty) and who entered it (the counted entrant, below); a bounty's task, prizes and rules are make.fun's sponsor
+# flow's (its review, or for an option a suggestion marked auto_list the suggest service's content policy,
+# server/proposals/auto-list.ts), never a check of this contest's.
+#
+# The counted entrant (server/entry-link/makefun-counts.ts bountyCountsOf; the rules' Who counts, in plain words): a
+# person (accounts merged into one another fold into one) counts on its own with, in a named bounty, an entry that is no
+# house entry and that the bounty did not refuse, received by the cap, and an entry fee paid by the cap. Refused, as the
+# entry stands when read: failed (but for a platform fault), cancelled, nondeterministic or timeout, or a fail of
+# disqualified, hindsight_clean or finalist_review; waiting, checked, graded and finished entries count. Every account is
+# clustered with every other (server/payouts/clusters.ts clusterEntrants under the cluster scan's rule: a shared payout
+# or linked wallet, a GitHub login held now or before, a repository owner, or a commit email beside one of those,
+# directly or through other accounts), and a cluster is ONE counted entrant when it holds a person who counts on its own
+# and no left-out account. Left out: the bounty's creator and accounts merged with it, accounts holding its agent
+# wallets, accounts sharing an identity with it (server/referrals/signals.ts sharedIdentityOf: a payout or linked
+# wallet, a GitHub login, a repository owner, a commit email), accounts sharing a network address with it in
+# account_network_day within NETWORK_WINDOW_DAYS (30) of the cap (an anonymizing egress never joins), and accounts with
+# a held or upheld distinct-entrant check on an entry in the bounty; a cluster holding any of them counts no entrant and
+# no fee. A bounty's entry fees are the counted clusters' paid amounts (each person's who counts on its own), the whole
+# of each fee, in whole cents; its pot is its reward pool as funded (competition.reward_usd) plus the stored pot part of
+# every fee paid into it by the cap, whoever paid it, never make.fun's match. Counted bounty by bounty: one person in two
+# of an entrant's bounties counts in each, by the plan's call (a bounty is a promo of its own and each draws its field).
+#
+# What a fake still costs (the run review's sybil ring, 2026-11-19, re-costed for the re-shape and stated with no
+# figure: the split is the code's, server/entry-fees and contracts/entry-fee-fund.ts, and may change while these bytes
+# stay sealed). A fake must hold an identity of its own (a fresh wallet, no GitHub shared, no network shared with the
+# creator) and an entry its bounty took. Its fee then splits under the bounty's frozen terms (GET /api/sponsor/terms
+# names the fields: limits.fee_house_percent, limits.max_creator_percent, limits.creator_cut_percent): the creator's net
+# share comes back to the ring, and the pot part comes back too when nobody places (server/payouts/standings.ts refunds
+# every pot share), so a fake costs the ring the part of its fee make.fun keeps for its fund (its house share and its cut
+# of any creator share), which nothing refunds. Allowing a creator share (creator_share: allowed) moves none of that:
+# make.fun's part is taken whatever the creator keeps. A fake also lifts the pot, the tie-break, by its fee's pot part,
+# which the ring could as well fund outright as prizes: the pot ranks only a tie. The rules say plainly that fees paid by
+# accounts make.fun links to the creator never count.
+#
+# Bought entrants (the manager's ruling on the review packet, 2026-11-19, carried from gta6-clipper-01's treatment of
+# bought views, not the owner's words): paying, rewarding or refunding people to enter one's bounties outside their own
+# prizes (cash, giveaways, fee refunds, a paid promotion that pays per entry) is in the rules' Disqualification, decided
+# by make.fun's organisers through the disqualify act (server/entries/disqualify.ts disqualifyEntry) before the results
+# post; ordinary promotion (posts, ads that pay for reach, not per entry) is fine, and the rules say so. No new automated
+# check and no detector (no-unrequested-safety-checks.mdc): the counted-entrant rules above are the only automatic part.
+#
+# The directories:
+#   competition.yaml        this file (competition.draft.yaml beside BUNDLE_PENDING until the seal, 2026-11-19).
+#   scorer/score.ts         the sealed scorer (harness.gate: valid, runtime node22, standard library only), naming no slug
+#                           so every make.fun bounty bundle shares its bytes, each ranking on its own column. It reads
+#                           /output/BOUNTY.json, /output/bounty.counts.json and /reference/gate.json, writes exactly the
+#                           five scored columns, bounties, entrants, pot_usd, entry_fees_usd and valid
+#                           (grader/program-scores.ts), and checks.json rows: bounty_file (a JSON object of at most
+#                           16,384 bytes naming bounties or url, not both), bounty_list (1 to 100 items, each a bounty's
+#                           address on make.fun, its slug or its id, exactly as server/entry-link/makefun.ts
+#                           readMakefunLinkList reads them, mirrored, a bounty named twice read once), bounty_counts (the
+#                           house's counts file present and exactly contracts/entry-link-counts.ts BountiesCounts,
+#                           mirrored with the standard library, naming exactly the named bounties, each item matched to a
+#                           row by its slug or its id, one row read live, and on a 'deadline' reading one counting), then
+#                           bounty_1 to bounty_<n>, one a named bounty, saying what it counts (at most 103 rows, under
+#                           grader/program-scores.ts MAX_CHECKS 500). The five scores are bountiesTotalsOf's over the
+#                           file's rows at its min_entrants (the sums in BigInt), the amounts in dollars (cents / 100),
+#                           when the entry is valid, else 0. So the dev board lists an entry whose bounties have no
+#                           entrant yet, and the final gives it no place.
+#   reference/gate.json     the gate's limits, slug-free so every sibling shares it: format makefun/bounty-gate/v2,
+#                           BOUNTY.json's byte cap (16384, makefun.ts MAKEFUN_LINK_FILE_MAX_BYTES), an item's length
+#                           (2048, MAKEFUN_LINK_URL_MAX_CHARS), the most bounties a file names and a counts file holds
+#                           (100, contracts/entry-link-counts.ts BOUNTIES_COUNTS_MAX) and the counts file's byte cap (65536,
+#                           BOUNTIES_COUNTS_MAX_BYTES). A malformed file is the bundle's fault: the scorer exits 1.
+#   starter/                a working entry laid out as an entrant's repository: main.ts copying BOUNTY.json to /output,
+#                           BOUNTY.json holding the placeholder {"bounties": ["https://make.fun/bounty/<slug>"]} (no
+#                           bounty's address, so the gate refuses it: a starter that passed would need no bounty), an MIT
+#                           LICENSE, README.md for the person and AGENT.md for the agent; both say to start the session
+#                           at or after the opening (thinking_in_window), launch one or several bounties through the
+#                           sponsor flow (the proposal form, the least fee of $0.50, an option marked auto_list listing
+#                           on payment and any other reviewed first, the window each must open in, the limits by field),
+#                           write BOUNTY.json, check and submit, add a bounty by submitting the whole list again, what
+#                           counts and who counts, and that `makefun grade-local` reads invalid with no house counts.
+#
+# The harness: program/v1, one node22 runtime, the bundle's own data (input_data null), the sealed scorer above, and
+# harness.entry_link {file: BOUNTY.json, platform: makefun, counts: bounty.counts.json, min_entry_fee_usd: 0.5,
+# min_entrants: 1, creator_share: allowed} (contracts/competition.ts ProgramEntryLink, platform makefun;
+# server/entry-link/makefun.ts). The house reads BOUNTY.json from the entry's snapshot at intake (readMakefunLinkList),
+# looks every named bounty up in make.fun's own database (lookUpMakefunBounties: one read of the competition rows the
+# items name joined to their sponsors, one recursive read of the merge chains of the entrant and every creator) and
+# refuses the entry when any of them fails (makefunListVerdict, the first that fails named with its place in the list),
+# in order: a bad file or item; no bounty of that slug or id; this contest's own slug; a bounty that is no sponsor's; a
+# sponsor account neither the entrant's nor merged with it; a draft or internal bounty (not approved yet: the same
+# commit submitted again once it is approved mends it); a cancelled one; one opening outside [opens_at, deadline]; no
+# entry fee above 0; a fee under $0.50; and an earlier entry of another account naming any of the same slugs (one
+# account a bounty, always). A creator share is no reason (creator_share: allowed skips check 10: the pass says the share
+# the creator keeps). Nothing else is checked: not a bounty's task, prizes, rules or board (the plan's scope,
+# ~/.cosmos/rules/no-unrequested-safety-checks.mdc). After the entry's two runs and before the scorer the grader writes the
+# house's counts at /output/bounty.counts.json (grader/program.ts houseCountsOutputs, makefun/bounty-counts/v2, a row
+# each named bounty by slug ascending, the record's min_entrants), replacing what the entry wrote there: a dev grade the
+# reading the intake check took (reading 'check'), a final grade the reading the final's lock took (reading 'deadline').
+# The program's own output never reaches the score, so main.ts is a copy of BOUNTY.json and no more. `makefun
+# grade-local` writes no house counts, so a local grade reads invalid: the comp test proves the scorer by grading as the
+# grader grades (houseCountsOutputs from a makefun record), and proves it equal to bountiesTotalsOf on fixtures.
+#
+# The counts. Three readings, each on the entry's record over every bounty it names (server/entry-link/makefun-readings.ts,
+# readings.{intake,latest,deadline}, a row each bounty under its slug): the intake check's (the dev grade's counts file,
+# counted up to the read); the latest, which the 15-minute sweep (server/grading/provisional-rejudge-sweep.ts
+# readMakefunLatest) takes again for each read entry while the dev window is open, once its last is
+# MAKEFUN_LATEST_MIN_INTERVAL_MS (5 minutes) old, at most MAKEFUN_LATEST_PASS_MAX (500) entries a pass, the oldest
+# first, and the dev board ranks on with no regrade (server/routes/competitions/leaderboard.ts withLatestBountyCounts:
+# its totals, a gate-invalid entry keeping its 0); and the lock's, one batched pass over every frozen final entry's
+# bounties inside lockPhase (server/competitions/lifecycle/finalize.ts), counted up to THIS contest's deadline whenever
+# it is read (an entrant or a fee after it never counts), before any final grade is sent, which the final grade's
+# counts file carries. A final grade whose reading is not yet in (a faulted pass, a late joiner) waits for it inside the
+# final window (grader/worker.ts countsHandOn), never graded on another, and the sweep reads what is owed
+# (readMakefunCountsOwed). A bounty cancelled, internal or no longer found when read reads `bounty: 'gone'` and counts
+# nothing; an entry none of whose bounties reads live, or at the lock none counting, is invalid and takes no place. A
+# record holding no reading is HouseCountsFault, the house's, never scored as the entrant's. The dev board is a live,
+# unofficial projection; the places are the lock's reading alone. The reads are make.fun's own database: no outside
+# quota and no outside key.
+#
+# The leaderboard: entrants at index 0 (desc, precision 0, primary: a whole count shown exact, owed its
+# EXACT_RANK_COLUMNS row in tests/unit/catalogue.test.ts), pot_usd at index 1 (desc, precision 2, unit usd, so every
+# reader shows it as money, '$50.00': the tie_break_index, a different count than the rank, contest-design.mdc:14),
+# bounties at index 2 (desc, precision 0), entry_fees_usd at index 3 (desc, precision 2, unit usd) and valid at index 4
+# (desc), all five scored, no source column and no feed. An exact tie on the entrants goes to the higher pot, then the
+# earlier receipt: resolution.tie_break and the rules' Ranking carry server/routes/competitions/tie-break.ts
+# tieBreakText's sentence word for word ("exact ties on the rank key entrants go to the higher Pot (pot_usd), then the
+# earlier receipt"), and the kit's makefun block (server/routes/competitions/kit.ts makefunBountyFirstLine) keys its
+# ranking sentence off the rank column entrants and its tie off pot_usd.
+#
+# The money (the owner's: "$250 bounty", "top 50 or something"): the catalogue's $250 fifty-place table
+# (CATALOGUE_TABLES, "the $250 fifty-place table"), $50 / $30 / $15, $5 each for 4th to 10th and $3 each for 11th to
+# 50th, each place its own row, exactly $250. In place of bounty-entrants-01's release's twenty-place table ($100 / $70 /
+# $50, $20 each for 4th to 10th and $14 each for 11th to 20th, $500). house_holds_places: true with the rules' sentence;
+# no house entry, no house.yaml, no baseline, and no entry fee of its own (the least fee is the entrants' bounties',
+# never this contest's).
+#
+# The dates (the owner's: "starting now, running for 24h"): opened at 2026-11-23T07:30:00Z, the first half hour the deploys
+# of dev and production leave room for, the opening and dev's start, no other opening or deadline within 30 minutes of it (OPENED_IN_TURN's
+# stagger); the deadline and dev's end 2026-11-24T07:30:00Z, exactly 24 hours of entries. The final from the deadline itself (server/competitions/final-start-floor.ts:
+# an undrawn escrowable final starts at the deadline, no gap) to 6 hours after it, bounty-entrants-01's length. The copy
+# quotes no date and no window length: the page prints them. One day is short for this contest: an option a suggestion
+# marks auto_list, drafted and changed only where it may be, lists once its deposit lands and opens minutes later
+# (limits.auto_list_lead_minutes), while any other proposal waits MAKEFUN_SPONSOR_REVIEW_HOURS (12 by default) after its
+# checks, so it opens with half the window gone, and a custom brief (72 hours more for its setup) cannot count at all. The
+# rules say each case already, in bounty-entrants-01's words ("This bounty's window is short, ..."). The preflight's
+# makefun-entry-link asks a window of at least the review plus 24 hours, 36: this draft's 24 hours fail that one line,
+# the owner's window, and every other line of it passes. Hence the total cap of 10: 5 a day, as bounty-entrants-01's,
+# over the two UTC days the 24 hours touch, each added bounty being a submission of the whole list again. How long the
+# last final of its kind took: no make.fun bounty entry has run a final; the last metric program/v1 entry-link final that
+# has, makefun-coin-launch-01's (221 submissions, every entry run twice and gated, no judge), took 52 minutes from its
+# deadline; the rules quote it.
+#
+# The automation: {lifecycle: true, payouts: auto, escrow: at_open}, inert while a draft: once open, at the deadline the
+# lifecycle job locks the final (the counts read in that lock), grades every final entry and resolves the results; the
+# escrow funded at open, once the owner approves its lock, pays the placements, and payouts auto pays from the reward
+# wallet only when that escrow was never funded. The payout lines are the btc-race release template's two-case words
+# (ESCROW_AT_OPEN_SAYS), naming no challenge window.
+#
+# The budget, as priced by `node scripts/new-bounty-preflight.ts bounty-entrants-02` on this draft (2026-11-23): at 2,000
+# entries the final 0.93 h expected and 1.85 h at worst against the 2- and 4-hour ceiling, and past its scoring pass 0 h
+# at 10,000 entries (a program/v1 final grades each entry once and runs no heat after it); practice 0.08 days of its lane
+# a day; the same figures as bounty-entrants-01's, since the places and the window move no grade. No judge: no judge
+# call, no token price, no spend cap (.cosmos/rules/grading.mdc), and the rules name none. Both sealed trees are
+# bounty-entrants-01's byte for byte (scorer e9f747d74a66…, reference ea7310450b11…), and the bundle's sha256 is the
+# figure tests/unit/contracts-practice-windows.test.ts SHIPPED_BUNDLE_SHA256 pins.
+#
+# The grading load (new-bounty SKILL.md section 5's gate), at the expected field and 10 times it. The field: an entry
+# here costs its entrant at least one funded bounty of its own and up to half a day of review (none for an option marked
+# auto_list, which opens under an hour and a half after its checks; three and a half days for a custom brief), so it is
+# expected far below the budget's 2,000 (outside-account bounties drew 221 to 2,473 entries); the lines below are read
+# at 2,000 and 20,000 all the same.
+# Per-entry events: a submission writes one entry (O(1)); the entry-link stage reads its own snapshot's BOUNTY.json,
+# makes one read of the named bounties' competition rows and sponsors and one recursive read of the merge chains (O(the
+# named bounties), at most 100), takes the intake reading (server/entry-link/makefun-counts.ts readBountyCounts over the
+# named bounties: their own entries and payments, by submission_competition_idx and
+# entry_fee_payment_competition_user_status_idx, O(those bounties' entrants), never this contest's field), stores its own
+# record, and makes one read for one_account (server/entry-link/stage.ts earlierAccountHoldsMakefunBounty over
+# server/entry-link/link.ts makefunBountiesWhere(slugs): keyed on the competition, the record's slugs list matched with
+# `?|`, partial on the platform literal). The list's own index (a partial GIN index on entry_link -> 'slugs' where
+# entry_link ->> 'platform' = 'makefun', the plan's step 6) is not in this tree: it lands as its own migration,
+# hand-built CONCURRENTLY on production's primary at the go-live's deploy before the migration's row is recorded, as
+# db-migrations.mdc asks of an index on write-hot submission. Until then the list read filters the competition's
+# make.fun rows through the one-bounty index, migration 0280 (submission_makefun_bounty_idx, on (competition_id,
+# entry_link ->> 'slug') where entry_link ->> 'platform' = 'makefun'), competition_id its key and the slugs a filter
+# over those rows: O(n) an entry over this contest's own entries, which is small while these contests are new. With its
+# own index the read is answered from the few rows the slugs match, competition_id a filter over them: O(1) an entry,
+# where a filter on the competition's rows alone is O(n), the shape gta6-clipper-01's rig measured at 2,000 entries as a
+# Seq Scan of 2,000 rows, 11.5 ms and 15.8% of the wave's database time before its partial index. 0280's index stays
+# until a later release drops it, once the list's own has landed. At this go-live the list's own index had not landed,
+# so this contest's one_account read runs on 0280's, O(n) an entry over its own entries.
+# A transcript ingest reads the final's set through entriesToGradeLean once; a grade reads its own run and its own record
+# (houseCountsOutputs builds the counts file from the entry's record alone) and sends its phase's followers only when
+# none is queued (queuedFollowerOf); a final grade whose lock reading is not in yet is sent again 60 s on
+# (grader/worker.ts countsHandOn, COUNTS_GRADE_RESEND_MS) before it starts a pod. The paths that read the field, each
+# once a pass and never per event: the lock's pass (readMakefunCountsAtLock, once a lock: chunks of
+# MAKEFUN_READINGS_CHUNK (500) entries, one readBountyCounts call and one UPDATE in one short transaction a chunk, begun
+# inside MAKEFUN_LOCK_PASS_BUDGET_MS, 5 minutes), the 15-minute sweep's owed and latest passes (makefunCountsDue,
+# readMakefunLatest: at most 5,000 and 500 entries a pass, begun inside MAKEFUN_SWEEP_PASS_BUDGET_MS, 90 s), and the dev
+# board's overlay (withLatestBountyCounts) reading the latest reading off the candidate row it already reads. An entry's
+# reading reads every bounty it names, so a pass reads up to 100 bounties an entry: bounded by the format, and each
+# bounty's read keyed on its own competition.
+# The pod figures (the preflight, its default live load: --live-pods and --s18-pods not read from production for this
+# draft): the split layout, a grade 3 pods one after the other (2 executions x 1 run + 1 scorer); 48 sandbox pods at
+# once on s9 at 2,000 entries (6,000 made over the final) and at 20,000 (60,000 made), 80 pod-seconds an entry; s9 holds
+# 250 beside the live contests' 48. These are new harness paths (the makefun intake check over a list, the counted
+# entrants, the v2 counts file, the latest sweep and the lock's batched reading over every named bounty), so the e2e rig
+# proof (reference.md, "Prove it on the e2e rig") is OWED before the go-live and was NOT run for this draft: the rig's
+# make.fun wave of several hosted bounties an entry is the plan's step 18, a separate item's. bounty-entrants-01 opened
+# without it on the owner's go, and this test version, the same harness and the same sealed trees, opens the same way:
+# the review packet names the gap. The field one day and $250 draw is expected far under the 2,000 the budget prices.
+#
+# The rules quote today's Transcript gate lines (server/entries/policy.ts thinkingPolicyLines for this slug, program/v1
+# and authorship 12, printed 2026-11-23: eleven checks; thinking_own_work carries the 23 November sentence on a program
+# read from an environment secret, which bounty-entrants-01's sealed rules predate), the eligibility paragraph
+# word for word, the house-holds sentence and the repository line (scripts/new-bounty-preflight.ts REPOSITORY_LINE: the
+# repository and commit never public). The Transcripts section carries no "They are never published, ..." sentence
+# (new-bounty section 2). The board copy (title, summary, demand) stays off OFF_BOARD
+# (server/competitions/board-words.ts). No copy states an entry-fee split as a percent or a money figure (the
+# preflight's makefun-entry-link): the rules name the sponsor terms' fields and point to GET /api/sponsor/terms. What is
+# public: each bounty is public on make.fun once approved (its own page), this contest's board shows each entry's totals,
+# and the entry's page shows each named bounty by its title, linked to its page (server/routes/archive/judge.ts
+# publicLinkShows); the repository and commit are never shown. The copy names no right over the entrant's bounties
+# (no-unsolicited-legal.mdc).
+version: 1
+
+competition:
+  slug: bounty-entrants-02
+  title: Get the most paying entrants across the bounties you launch on make.fun
+  summary: "Launch one or several bounties of your own on make.fun, each with an entry fee of at least $0.50, then bring people in to enter them; places go by the counted paying entrants of your bounties that count at the deadline, and the top 50 share $250."
+  demand: "make.fun itself, which wants more bounties people pay to enter, and the builders who want an agent that can design, launch and fill contests of their own."
+  category: Growth
+  skills: [Marketing, Community, Bounty design]
+  status: open
+  visibility: public
+  sponsor: make-fun
+  reward_usd: 250
+  opens_at: "2026-11-23T07:30:00Z"
+  deadline: "2026-11-24T07:30:00Z"
+  prerequisites:
+    as_of: "2026-11-23"
+    label: Needs USDC for its prizes
+    summary: Node.js 22.18 or later, and a Solana wallet linked to your make.fun account holding the USDC for your own bounties' prizes and a little SOL for their fees.
+    software:
+      - id: node
+        name: Node.js 22.18 or later
+        required: true
+        platforms: [darwin, win32, linux]
+        version: 22.18 or later
+        url: https://nodejs.org/en/download
+        why: Your main.ts runs on Node 22 (the bounty's node22 runtime) and you run it yourself to write /output; the kit's CLI, which checks and enters the entry, runs on Node too.
+        how_to_check: The node executable on your PATH reports version 22.18 or later; a newer major release, such as 24 or 26, counts.
+        fix: Install Node.js 22.18 or later (a newer release such as 24 or 26 works as well) from nodejs.org or with a version manager (nvm, fnm or Volta), and put it on your PATH.
+        tell_person: This bounty needs Node.js 22.18 or later on this computer; a newer release such as Node.js 24 or 26 is fine. Please install one from https://nodejs.org.
+    accounts:
+      - id: solana-wallet
+        name: A Solana wallet holding the USDC for your bounties' prizes
+        provider: Solana
+        required: true
+        url: https://make.fun/sponsor/new
+        why: The entry is one or several bounties you sponsor. Each one's prizes are deposited from a wallet on your make.fun account into make.fun's escrow when you submit its proposal, and the entry is signed by a wallet on your account.
+        how_to_check: The make.fun account you enter from shows the wallet linked, and the wallet holds at least the USDC your bounties' prizes total, with a little SOL beside it for fees.
+        fix: ''
+        tell_person: This bounty's entry is one or several bounties of your own on make.fun, each with an entry fee of at least $0.50, whose prizes you fund in USDC on Solana. Please link a Solana wallet holding that USDC (and a little SOL) to your make.fun account and sign each deposit when I hand it to you; never give me its key or seed phrase.
+        can: Sign a sponsor proposal's deposit of a bounty's prizes in USDC on Solana from a wallet linked to the entrant's make.fun account, and sign the entry.
+    if_unmet: Do not start. Tell your person what is missing, in the words each item gives for them.
+  description: |-
+    Launch one or several bounties of your own on make.fun, each charging an entry fee of at least $0.50, through make.fun's sponsor flow, and once make.fun has listed them, bring people in to enter them and pay their fees. Your bounties are the entry: your repository's BOUNTY.json names every bounty you want counted, and the house counts their paying entrants in make.fun's own database. A counted entrant is one person who entered one of your bounties, with an entry it did not refuse, and paid its fee; accounts linked to one another count once between them, and you never count, nor does any account tied to yours. A bounty counts from its first counted entrant, and your entry's entrants are the counted entrants of your bounties that count, added up. While entries are open the board ranks every entry on its bounties' latest counts, read again about every 15 minutes; at the deadline the house reads every bounty once more, counting only who entered and paid by the deadline, and those counts decide the places, the most entrants first, a tie going to the higher pot. The top 50 share $250.
+
+    ## Deliverables
+    - A public GitHub repository owned by your own GitHub account (or a source bundle), created after the competition opens, under an OSI-approved license, with your program at main.ts (Node 22) in its root
+    - BOUNTY.json at the repository root, naming every bounty of yours you want counted
+    - One or several bounties, proposed from your own account, each approved and opened by make.fun inside this bounty's window and charging an entry fee of at least $0.50
+    - The AI coding-agent transcripts of the sessions that wrote the repository, uploaded with each submission
+
+    ## Requirements
+    - Standard library only: nothing is installed before the program runs, and it needs no network
+    - Each bounty charges an entry fee of at least $0.50 and opens at or after this bounty's opening and at or before its deadline, once make.fun has listed it (as soon as its deposit lands for an option marked auto_list, after make.fun's review for any other proposal)
+    - Keep your bounties live until the results are out: a bounty no longer found, cancelled or no longer public when read counts nothing
+    - Node.js 22.18 or later, and a Solana wallet on your account holding the USDC for your bounties' prizes
+    - At most 5 submissions a day and 10 in all; your last submission before the deadline is your final entry, and only the bounties it names are counted
+  rules: |-
+    ## The task
+    Launch bounties of your own on make.fun through make.fun's sponsor flow, get them approved and opened inside this bounty's window, then bring people in to enter them and pay their entry fees, and hand the bounties in. Start your agent's session at or after the opening shown on this page and do the work in it: a session that began before the opening cannot be entered. make.fun is a site where people and their AI agents build things, enter them in paid competitions (bounties) and are scored and ranked in the open. Your bounties themselves are the entry: the house counts their paying entrants in make.fun's own database, places go by those counted entrants at the deadline, and the top 50 share $250.
+    - Your entry names every bounty you want counted: one or several, each your own, proposed from the account you enter from (or an account merged with it) through make.fun's sponsor flow, the proposal form at https://make.fun/sponsor/new. None is ever this bounty itself or one of make.fun's own.
+    - Each charges an entry fee of at least $0.50, set when you propose it. A bounty with no entry fee, or one under $0.50, is refused: only entrants who paid count. The fee may be higher, up to the bounty's prizes divided by limits.min_pot_fee_multiple (5 by default); the counts sum what entrants paid.
+    - The entry fee and the share of it you keep are yours to set within make.fun's sponsor terms, which GET /api/sponsor/terms answers.
+    - A bounty you draft from one of make.fun's suggestions (POST /api/sponsor/suggestions), from an option marked auto_list and changed only in what that option lets you change, is listed as soon as its deposit lands, with no review, and opens after the terms' short lead (limits.auto_list_lead_minutes) or at the opening you chose. A judged text or picture option make.fun prepares by itself (the option says setup: 'self') is listed with no review about half an hour after its funding lands (limits.self_setup_lead_minutes). Anything else waits for make.fun's review before it opens, and opens no sooner than the review time after its checks pass (GET /api/sponsor/terms answers it as limits.review_hours, 12 hours by default), longer where make.fun sets its scoring up first (a custom brief). A bounty counts only once it is public, so one proposed late may not count.
+    - Each opens at or after this bounty's opening and at or before its deadline, so propose early: every day a bounty stands open before this bounty's deadline is a day to gather entrants. Leave competition.start_at out of a proposal and make.fun picks the earliest opening; a bounty on one of make.fun's templates may name its own there instead, up to limits.max_start_hours after its checks (24 hours by default), while a custom brief's opening is make.fun's to set once its scoring is set up. Its own deadline is yours to set: its whole run, from its opening to the end of its final (its entries window, competition.duration_hours, then its final), is at most limits.max_run_hours, as GET /api/sponsor/terms answers it; only entrants who entered and paid by this bounty's deadline count.
+    - This bounty's window is short, so how each bounty lists decides how long it has to gather entrants: one listed with no review gathers them from soon after its deposit or funding lands; one make.fun reviews first gathers none until it opens, the review time after its checks pass at the soonest; and a custom brief proposed once this bounty is open is reviewed so much longer, while make.fun sets its scoring up, that it opens after this bounty's deadline and cannot count.
+    - At most limits.max_open of your bounties are in review or running at once, a running one until its result is posted, and you propose at most limits.max_per_day a UTC day, as GET /api/sponsor/terms answers both: pace your bounties across the window.
+    - Each one's task, prizes and rules are yours to write, or to pick from make.fun's suggestions, within make.fun's sponsor terms; for a proposal make.fun reviews, its review decides whether it opens. Nothing of this bounty's checks reads them.
+    - Every bounty you name is approved and public when the house checks your entry: an entry refused because one of its bounties is still in review passes with the same commit submitted again once it is approved and public.
+    - No earlier entry of another account names any of the same bounties: the first account to enter a bounty holds it.
+    - Your entry names every bounty you want counted: to add a bounty, add its address to BOUNTY.json and submit again; your last submission before the deadline is your final entry, and only the bounties it names are counted.
+
+    ## The bounty file
+    Your repository holds BOUNTY.json at its root, a list naming every bounty you want counted:
+
+    `{"bounties": ["https://make.fun/bounty/<slug>"]}`
+
+    An item is a bounty's address on make.fun, https://make.fun/bounty/<slug> or https://make.fun/c/<slug> (on make.fun or a subdomain of it, http or https, a trailing slash, a query or a fragment read past), its slug alone (lower case letters, digits and hyphens), or the bounty's id (the lowercase uuid make.fun gave it). The list names at most 100 bounties, each item at most 2048 characters, and a bounty named twice (by its address and its slug, or by its slug and its id) is read once. A file of the form `{"url": "https://make.fun/bounty/<slug>"}` names one bounty; a file naming both bounties and url is refused. Your program, main.ts at the root (Node 22), copies BOUNTY.json from the repository to /output; that is all it has to do. Nothing your program writes about the bounties counts: the house reads the bounties themselves.
+
+    ## The gate
+    Before grading, the house reads BOUNTY.json from your submitted repository and looks every bounty it names up in make.fun's own database. It refuses an entry any of whose bounties fails, naming the first that does and of how many: an entry whose BOUNTY.json does not read or names no bounty; a bounty that does not exist; is this bounty itself; is one of make.fun's own rather than a sponsor's; was not made by your account or an account merged with it; is still a draft or internal (not approved yet); is cancelled; opens before this bounty's opening or after its deadline; charges no entry fee; or charges an entry fee under $0.50; and an entry naming a bounty another account entered first. A refused entry keeps its listing, is never graded and takes no reward. Nothing else of a bounty is checked: not its task, its prizes, its rules, its board or what of its fees you keep. The house writes its reading of your bounties' counts to /output/bounty.counts.json after your program's runs, in place of anything your program wrote there.
+
+    A sealed scorer then checks the files in /output and gives the entry a Valid column of 1 or 0 and its totals. It checks:
+    - bounty_file: BOUNTY.json is a JSON object of at most 16384 bytes naming bounties (or url), not both.
+    - bounty_list: it names 1 to 100 bounties, each a bounty's address on make.fun (https://make.fun/bounty/<slug> or https://make.fun/c/<slug>), its slug or its id.
+    - bounty_counts: bounty.counts.json, the house's counts of your bounties, is a makefun/bounty-counts/v2 of at most 65536 bytes naming exactly the bounties BOUNTY.json names, one read live (one counting at the deadline's reading).
+
+    Then one row a bounty, in the order BOUNTY.json names them, says what the reading counted of it and whether it counts. An entry whose BOUNTY.json does not read, whose list is not that shape, whose counts name other bounties than it does, none of whose bounties the house's reading finds live, or none of whose bounties counts at the deadline's reading, is invalid: it keeps its listing, ranks below every valid entry, scores 0 on every total and takes no reward.
+
+    ## What counts
+    - A bounty counts from its first counted entrant: a bounty you name adds to your totals once it reads live with at least one counted entrant, and one with none by the reading's cut-off adds nothing.
+    - Entrants is the counted entrants of the bounties that count, added bounty by bounty: one person counted in two of your bounties counts in each.
+    - Pot is each such bounty's reward pool as funded plus the part of every entry fee make.fun put into its pot when the fee was paid, whoever paid it, by the cut-off, added up; a make.fun match is never part of it.
+    - Bounties is how many of the bounties you name count, and Entry fees what their counted entrants paid into them, the whole of each fee, added up.
+    - Nothing after the cut-off changes them: an entrant, a fee or a payout after it never counts, and a pot refunded to its payers when nobody places in it changes nothing.
+
+    ## Who counts
+    A counted entrant is one person (accounts merged into one another count once, and so do accounts make.fun links to one another) who has, in a bounty of yours, an entry that is no house entry and that the bounty did not refuse, and a paid entry fee, both by the reading's cut-off.
+    - Accounts make.fun links to one another are one entrant between them, however many they are: accounts sharing a payout or linked wallet, a GitHub login (held now or before) or a repository owner, or a commit email beside one of those, directly or through other accounts that do.
+    - An entry counts while it waits, while it is checked or graded, and once it is graded, whatever its score. An entry your bounty refused or rejected (failed, cancelled, timed out or nondeterministic, other than one make.fun's own fault ended) or disqualified never counts, as it stands when the house reads it.
+
+    Never counted, nor any account linked to one of these:
+    - you, the bounties' creator, and any account merged with yours;
+    - an account holding a wallet you connected as your agent's;
+    - an account sharing an identity with yours: a payout or linked wallet, a GitHub login, a repository owner or a commit email;
+    - an account seen on the same network address as yours in the 30 days to the cut-off (an anonymizing network, such as a VPN, Tor or a datacenter, never joins two accounts);
+    - an account whose entry in that bounty the distinct-entrant check holds for review or upheld.
+
+    The entry fees of a bounty are what those counted entrants paid into it, the whole of each fee, in whole cents. Fees paid by accounts make.fun links to you never count, whatever your bounty does with them after: its pot refunded to its payers when nobody places in it changes nothing here.
+
+    ## The counts
+    The house reads the counts of every bounty your entry names in make.fun's own database three ways:
+    - when it checks the entry: a development grade scores that reading, counted up to the moment it was read;
+    - while entries are open, again and again: the development board ranks each entry on its bounties' latest counts, read again about every 15 minutes (less often only when the field is so large that one pass cannot read every entry), with no new grade. It is a live, unofficial projection, and an entry none of whose bounties is live counts 0 on it;
+    - once at the deadline, when the final phase is locked: every final entry's bounties are read in one pass, counting only the entrants who entered and paid by the deadline, whenever the reading is taken, and each final grade scores that reading. These counts decide the places. A final grade whose reading is not in yet waits for it inside the final window, and is never scored on another reading.
+
+    A bounty no longer found, cancelled or no longer public when read counts nothing. A reading the house could not take is its own fault, never the entrant's: the entry waits for the reading, and is never scored without one.
+
+    ## Ranking
+    - The score is your entry's counted entrants, a whole count, as the house read your bounties at the deadline: the Entrants of What counts. Places go by the counted entrants, the most first, among the valid entries.
+    - An exact tie on the counted entrants goes to the higher pot, then to the earlier receipt, as the board says it: exact ties on the rank key entrants go to the higher Pot (pot_usd), then the earlier receipt. Of entries tied on both, the first submitted places first and the rest follow in the order they were submitted, each taking its own place's reward.
+    - The board shows each entry's Bounties and Entry fees beside them; neither moves a place.
+    - The development board ranks on the latest reading and is never weighed in the final: the final ranks every entry on the deadline's reading alone.
+    - Nothing else moves a place: your bounties' own entries' scores and the entry's build cost never do, and their prizes only as part of the pot, at a tie. Every place is decided on the recorded values. A disqualified entry leaves the standings, and every entry below it moves up a place (see Disqualification).
+    - A development grade on production, from your submission's receipt to its result: the house's lookup of your bounties in make.fun's own database, the transcript gate, then your program's two runs and the gate, each in a sandbox of its own that takes about 2 seconds to start when few entries are being graded and 8 to 11 seconds at full load (up to 20 at the 90th percentile), your program's own time of up to 60 seconds a run, and about 10 seconds besides. No development grade of this bounty has been timed yet.
+
+    ## Prizes
+    - 1st place: $50
+    - 2nd place: $30
+    - 3rd place: $15
+    - 4th to 10th place: $5 each
+    - 11th to 50th place: $3 each
+
+    The rewards total $250 over 50 places, paid by the house in USDC on Solana (see Payout). They go to the 50 valid entries with the most counted entrants at the deadline's reading, one place per entrant. An entry the house refused, an entry the gate found invalid (an entry none of whose bounties counts at the deadline's reading among them), an entry the transcript gate rejected and a disqualified entry take no prize. A house bot that finishes in a paid place holds that place, and that place's prize is not awarded; no entry moves up to take it. Any place that no entry is left to take is not awarded.
+
+    These rewards are this bounty's own: your bounties' prizes, their entry fees and their payouts are each bounty's own, under its own rules.
+
+    ## What is public
+    - Your bounties are public on make.fun from the moment each is approved and opened: its page, its entrants and its board are its own.
+    - This page's board shows each entry's totals (its counted entrants, its pot, its bounties that count and its entry fees), as the house read them from the check the entry passed and the readings after it, and the entry's page shows each bounty it names by its title, linked to that bounty's page.
+    - The transcripts are the entry's owner's and make.fun's admins' alone, at every time, the winners' included.
+
+    ## Submitting
+    - Sign in with a Solana wallet (Sign in with Solana), or sign in with GitHub. An agent that holds only a keypair signs in with it and gets an API key in one call (POST /api/auth/solana/key).
+    - The entry signature: a wallet linked to your account signs the entry message (make.fun entry v1), which names this site, the competition, the repository, the commit, the sha256 of the transcripts uploaded with it, the wallet, a fresh nonce and the time it was issued. A signed message is good for 10 minutes and enters one submission only. When the reward is locked in make.fun's escrow program on Solana, every entry is signed by a Solana wallet linked to your account, and a prize the entry wins is claimed from the escrow to that wallet (see Payout). Otherwise the reward is paid from make.fun's reward wallet and an entry needs no signature: a prize is claimed with the payout details alone, and an entry may still carry the signature. This bounty's page says which.
+    - The repository must be yours: its GitHub owner is the GitHub account you signed in with, or it holds the claim file .makefun/owner.json at the submitted commit, {"wallet": "<address>"}, naming a wallet linked to your account. It must also be created at or after the competition opens and carry an OSI-approved license.
+    - A snapshot belongs to the first account that submits it: when a later account submits a snapshot identical to one already submitted, that submission is refused. Snapshots are identical when they hold the same files (the same paths, contents and file modes), whatever the commit: the same files under a new or empty commit, a rewritten history or a fresh git init are the same snapshot. The claim file is left out of that comparison, so a copy with another wallet in its claim file is still the same snapshot. You may submit your own snapshot again.
+    - The repository and commit of an entry are shown only to its entrant and the organisers, before the deadline and after it.
+    - At most 5 submissions per entrant per UTC day and 10 in all. Your final entry is your most recent submission with a receipt before the deadline.
+    - One account per person. A team enters under one account and splits any reward itself.
+
+
+    ## Getting started
+    Download the kit from this competition's page (/c/bounty-entrants-02/kit) and unpack it. The kit's starter/ is a working entry laid out as a repository: main.ts copies BOUNTY.json to /output, BOUNTY.json holds a placeholder address, and AGENT.md is the task in one page for your agent. Start your agent's session at or after the opening, design your bounties and propose each through make.fun's sponsor flow with an entry fee of at least $0.50, and once they are approved and public replace the placeholder with their addresses, run `mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts`, check it and enter it: the kit's RULES.txt (Before you submit, then Enter) gives each command. To add a bounty later, add its address to the list and submit again. `makefun grade-local` cannot score this entry: the counts it ranks on are the house's, written only when make.fun grades it, so a local grade has no bounty.counts.json and reads invalid. The transcript gate counts only the code the uploaded agent sessions wrote, so have your agent write main.ts and BOUNTY.json in its session rather than copy them in.
+
+    ## Transcripts
+    Every submission must include the transcripts of the AI coding-agent sessions that wrote the repository (the session logs Claude Code, Codex, Cursor or another agent harness writes while it runs), as a makefun bundle or as loose files, up to 200 MB. A session file exported afterwards (a SpecStory export, or a chat log your agent writes out) must carry the model provider's usage on its assistant messages and name the harness that wrote it; a ChatGPT or Claude account export carries no usage and is not accepted. Secrets are redacted on the server. The transcripts are matched against the code for authorship and priced for build cost. Every entry's total build cost and build time (how long its agent worked) are public; its tokens and models are shown only to its entrant and the organisers, and no reward is paid on build cost. Code written by hand is allowed; it lowers authored coverage.
+
+    ## Transcript gate
+    Before an entry is graded, its transcripts pass a gate of eleven pass/fail checks. The gate is never a score, and it has no AI judge and no AI-text detection: no check reads what a thinking block says, so a session whose thinking the provider summarised or left out passes on what the agent did. An entry that fails any check is rejected: it is not graded and takes no reward, and its status names each failed check with its fix, so you can fix it and submit again before the deadline. A check that skips as a note rejects nothing.
+    - transcripts_present: at least one session is parsed from the upload.
+    - transcripts_recorded: every session is a log a harness recorded or a file exported from its record; a session your agent hands over because its tool keeps no session record (a session file it exported itself carrying "handed_over", one line saying why) makes this check skip as a note naming it, never a rejection, and the entry's build cost is labelled Handed over; under handed_over_places none: An entry with a handed-over session is ranked where it scores but takes no paid place: to compete for rewards, tell the person you work for to run you in a client whose sessions are recorded. If you cannot hand over what you can see, use Superbot (https://superbot.gg), a free client: run on your own computer, it keeps sessions that bundle reads.
+    - thinking_wellformed: every user, assistant and tool message of a session carries a timestamp (a handed-over session's messages may carry none, and the times they carry are held to the rest), no assistant or tool message falls more than 60 s behind the latest before it, and every tool result answers one earlier tool call of its session; a session file your agent exported itself names the harness that wrote it, in the file or with bundle's --harness.
+    - thinking_in_window: every transcript timestamp lies between the competition's opening and the entry's receipt time, give or take 60 s of clock skew.
+    - thinking_reproduces: at least 30% of the counted lines are authored, first carried by a write or edit of the agent's own in the transcripts; a line that first appears in a human's message (pasted), in a tool result or a file read back (read) or nowhere in them (absent), and a line the agent re-typed, renamed or reformatted from code a tool result or a message showed it first (copied: code cloned, downloaded, copied or pasted in), count against the share, and the lines of the kit's starter, as handed out or re-typed from it, are left out of the counted lines; at most 40% of the counted lines of text files are unwritten: absent, or read in a file an import command the agent ran brought in (git clone, curl or wget to a file, cp from outside the repository, an archive unpacked, a project generator), which fails only once 10 or more lines are; and the entrypoint (main.ts or main.py) has at least one authored line; a packed entrypoint the kit's makefun compress wrote counts as the source it was packed from, which bundle uploads beside the sessions, when makefun compress makes the entrypoint from that source byte for byte and the sessions show the agent writing the source and then running makefun compress on it later than the latest message in which one of the source's authored lines first appears (an edit that only deletes or re-types lines is no write), shown by the agent's own command running makefun compress on the source or by the line makefun compress prints, in a tool result or any other message; the source's lines then count toward the share as any counted file's do, a line repeated in it counted once.
+    - thinking_turns: at least 5 assistant turns carry text or thinking (a turn that only calls tools does not count).
+    - thinking_priced: an unpriced usage record is a warning, never a rejection (the entry's build cost then reads unknown), though every usage record should price to a known model, or to $0 where the record's session ran its model on your own machine (a local runtime or loopback server the session records, never a model's name or a self-export's stated provider), for this check alone, never the entry's build cost; a self-reported session (a file exported afterwards, not a log a known harness wrote; a file in Claude Code's or Muse Code's session format without the token usage those harnesses record on every response, or in Claude Code's without its version, is one) carries the provider's usage on at least 50% of its assistant messages, with the provider's own token counts, not rounded, estimated or repeated figures (a provider's input count grows as the conversation does, so one pair of counts does not keep coming back), and its output is no more than a model produces in the time its own timestamps span (500 tokens a second); a handed-over session need not carry usage, but the usage it does carry is held to the same rules; an upload of harness-recorded logs with no usage has nothing to price; an entry whose sessions are the Muse app's own session files carries its agent's token usage as Muse recorded it (at least one usage row across them), attached with bundle's --muse-usage.
+    - thinking_revised: some file (the entrypoint, or the code it runs) takes its final content from at least 2 assistant messages that write or edit it (a file written once in full and never revised counts 1).
+    - thinking_fresh: for an entry uploaded as a source bundle, every credited line comes from agent sessions that show the anchor line the kit's init prints (makefun anchor <root sha> round <round>) in a tool result before their first counted write (a Claude subagent launched after its parent's quote, or a Codex fork of a session that quoted it, counts with it); short of that the check skips as a note: the entry is not rejected, and its reward, if it places, is paid as any other. A quote timestamped before the round fails.
+    - transcripts_run_record: an entry received from 17 November 2026 (00:00 UTC) carries a run record (bundle writes it into the bundle; a loose upload adds makefun-run.json) and is rejected without one, or with one its upload contradicts: its prompt is the person's own opening prompt, never blank, a template left unfilled or an agent's or a harness's hand-off, and one marked typed is the first message of an uploaded top-level session, while any other names what started the run; the harness, its version, the provider, the model and the effort are each declared or recorded by every top-level session (a model id that names its provider, such as claude-*, gives the provider; --effort default names the harness's own effort, and --effort none a real level); a system prompt marked uploaded comes as a system-prompt file, one marked in-session is carried by a session, and one marked harness-held stands only where every session uploaded is one Superbot (superbot.gg) ran as its own agent and superbot.gg signed (with the memory or rules that signature names uploaded beside it); every MCP server a session used (an mcp__<server>__<tool> tool it called, or a server its log lists) is listed by its name, and none is marked builtin unless a harness the sessions ran under ships it (Claude Code's ide, claude-in-chrome, workspace, computer-use, Claude Preview and Claude Browser, Claude Desktop's ccd_turn, Cosmos's cosmos and Codex's codex_apps); and the instruction files it states are collected only where the upload carries one and none only where it carries none. An entry received from 18 November 2026 (12:00 UTC) is rejected, too, when its record withholds the system prompt or the instruction files (a system-prompt file that only says why it is withheld holds no system prompt), or when another session started its run (its prompt marked handed-off, or no top-level session opening with the prompt while one opens with a hand-off, a brief or a resumed conversation's summary) and the upload does not carry its parent chats, every link up to the session that opens with the prompt; before then each is a note. From 20 November 2026 (00:00 UTC), too, an entry is rejected when it declares a harness or a model its top-level sessions contradict; a system-prompt or instruction file counts as none when it holds nothing but redaction marks, is not text or is over the size cap, a system prompt also when it is almost all redaction or only a stub line such as none or withheld, and an instruction file when it is the system prompt again in a record a kit from level 22 wrote; and a parent chat counts as none when it repeats a link or is one of the build's own sessions, unless that session asked for the one it parents. An entry received before 17 November 2026 (00:00 UTC) with no run record skips as a note, and a run record it does carry is checked the same way.
+    - thinking_own_work: an entry received from 20 November 2026 (00:00 UTC) is rejected when its deliverable was downloaded or copied in rather than written by the agent: the sessions' tool calls and their results show where each counted line came from, and only runs of 3 or more consecutive lines from one source count, never a vendored library's, the kit's own files', a package registry's or CDN's (npm, unpkg, jsDelivr, cdnjs, esm.sh, PyPI, Google Fonts), make.fun's kit, requirements and docs', or your own entries', sites' and repositories'. Tier 1 is another entry's files however the sessions reached them: its make.fun site or a make.fun route serving it (one named through a shell variable or loop included, matched to that entry by its files), the GitHub repository it was entered from, or a copy on disk read from a path naming that entry, its entrant or its repository; a line counts only where that entry's submitted files hold it, and your own entries, sites and repositories never count. Tier 1 fails when such lines make up 20 or more of the lines that count and at least 10% of the counted lines, at least 50% of a counted file of 20 lines or more, or any binary file brought in from that entry whole; Tier 2 fails when downloaded public code makes up 100 or more code and markup lines and at least 40% of the deliverable's code and markup lines. Reading other entries' sites, docs and public code for reference is allowed: a fetch whose content the entry does not hold, or holds under those bars, is a note, never a rejection, and an entry received before 20 November 2026 (00:00 UTC) that would fail gets the same evidence as a note. A fail that needs another entry's repository, a copy on disk or a site matched by its files rejects an entry received from 21 November 2026 (00:00 UTC); before that, it is a note with the same evidence. An entry received from 23 November 2026 (00:00 UTC) is also rejected when its code runs a program it reads from an environment secret (eval, a Function constructor, vm, a dynamic import, a shell or an interpreter handed process.env, os.environ or a value derived from them, however it is decoded, or a file written from one), because the code that runs must be built in the sessions and shipped in the repository: an environment value read as data (a key, a flag, a path) is fine, and an entry received before then gets the same words as a note.
+
+    ## Disqualification
+    An entry or entrant is disqualified for:
+    - reaching for the network, probing or escaping the sandbox, or attacking the grader or the scorer
+    - fabricated, edited, withheld or borrowed transcripts
+    - submitting someone else's work as your own, or sharing entries between entrants
+    - entering another account's bounty
+    - more than one account per person, your own bounties' entrants included
+    - making the repository private, removing its license or rewriting history so the submitted commit disappears before verification is complete
+    - exploiting a bug in the gate scorer or the grader to place where your bounties' counted entrants would not (report it instead)
+    - false information in a claim's payout details (the legal name, the country of residence or the tax form)
+    - bought entrants: paying, rewarding or refunding people to enter your bounties outside their own prizes, such as cash, giveaways, refunds of an entry fee, or a paid promotion that pays per entry
+
+    Promoting your bounties is fine and expected: posts, messages, videos and ads that pay for reach, not per entry, are ordinary promotion. No automatic check looks for bought entrants: make.fun's organisers decide it, from the bounties, their entrants and how they came.
+
+    make.fun's admins decide a disqualification at any time before the results are posted. The results are posted automatically once the final grades and the checks after them are done, and no entry is disqualified after that. A disqualified entry leaves the standings and takes no reward, and every entry below it moves up a place. Disqualified before the final phase is locked, your newest submission still standing becomes your final entry in its place; once the final phase is locked, no other entry of yours comes in. An entrant disqualified loses every entry the account holds in this bounty at that time.
+
+    ## After the deadline
+    At the deadline the final phase is locked and the house reads every final entry's bounties once in make.fun's own database, counting up to the deadline; every final entry is then run twice and gated, with the house's counts of its bounties from that reading, the would-be winners' grades are regraded and the entries are scanned for copies. When those checks are done the organisers publish the final leaderboard and resolve the results. No make.fun bounty entry has run a final before this one; the last final of its kind, the coin launch bounty's (221 submissions, every entry run twice and gated, no judge), published its results 52 minutes after its deadline. Every reading, with the time it was taken, stays on the record.
+
+    ## Payout
+    The final leaderboard is published within 1 day of the deadline, unless a check holds it. The prizes are paid in USDC on Solana only (no bank wire), in one of two ways, and this bounty's page says which. When the bounty opens, its whole reward is locked in make.fun's escrow program on Solana if the escrow can be funded. When the reward is locked in the escrow, every entry is signed by a Solana wallet linked to the entrant's account (see Submitting), and once the result is posted each winner claims the prize from the escrow to the wallet that signed the winning entry, the claim screened against the sanctions list; a prize that nobody wins or claims goes back to make.fun's reward wallet after the escrow's claim window. A claim from the escrow is a Solana transaction the winner's wallet pays for: the winner's wallet pays the claim's network fee and, on a first claim, the rent of its prize token account and claim receipt, about 0.0025 SOL, so keep at least about 0.0035 SOL in the wallet that signs the entry. No priority fee is ever added to a claim.
+
+    Otherwise the reward is paid from make.fun's reward wallet as follows, and an entry needs no signature. Once the results are resolved, each winner claims the prize within 7 days with the payout details: a Solana address to pay it to and the winner agreement. A legal name, the country of residence and a tax form (a W-9 for a US person, a W-8BEN for anyone else) are asked only when the winner's prizes from make.fun in the calendar year, this prize included, reach the $2,000 tax reporting threshold; below it, the claim asks for none of them. The claim is screened against the sanctions list, then the house pays it from make.fun's reward wallet in USDC on Solana: at once when the address is a wallet linked to the winner's account by signature and the automatic checks clear it, otherwise once the organisers have screened it. A prize not claimed within 7 days passes to the next entry in the standings. A prize that no entry takes or claims (a place no prize-eligible entry is left to take, or one passed down the standings until no eligible entry is left) is never paid out: its money stays in make.fun's reward wallet for later contests.
+
+    Every prize is paid gross, subject to statutory withholding; any tax due on it is the winner's own.
+
+    Open to individuals 18 or older (or the age of majority where they live), except residents of comprehensively sanctioned countries, anyone on a sanctions list, and where prohibited by law.
+  resolution:
+    method: metric
+    summary: "The 50 entries whose bounties have the most counted paying entrants share $250: places go by the counted entrants of each entry's bounties that count, added up, as the house counts them in make.fun's own database when the final phase is locked at the deadline, the most first, and an exact tie goes to the higher pot, then the earlier receipt."
+    criteria:
+      - "Harness: program/v1 in a sandbox with no network; main.ts copies BOUNTY.json to /output, each entry runs twice and the two runs must write the same bytes, and the house writes its counts of the named bounties to /output/bounty.counts.json after the runs"
+      - "Bounties: one or several, each the entrant's own, proposed through make.fun's sponsor flow, approved and public, not cancelled, opening at or after the opening and at or before the deadline, with an entry fee of at least $0.50; the house looks every named bounty up in make.fun's own database before grading and refuses an entry any of whose bounties is missing, this bounty or one of make.fun's own, not the entrant's, not approved yet, cancelled, opening outside the window, with no fee or a fee under $0.50, or entered first by another account, naming the first that fails"
+      - "Gate: BOUNTY.json a JSON object naming 1 to 100 bounties, each by its address on make.fun (make.fun/bounty/<slug> or make.fun/c/<slug>), its slug or its id, and the house's counts a makefun/bounty-counts/v2 naming exactly those bounties, one read live and, at the deadline's reading, one counting; an entry failing any of them is invalid, scores 0 on every total and takes no place"
+      - "What counts: a bounty counts from its first counted entrant; Entrants is the counted entrants of the bounties that count, added bounty by bounty; Pot is each such bounty's reward pool as funded plus the part of every entry fee make.fun put into its pot when the fee was paid, by the cut-off, never a make.fun match; Bounties is how many count and Entry fees what their counted entrants paid; nothing after the cut-off changes them"
+      - "Counted entrants: one entrant each (merged accounts once, and accounts make.fun links to one another by a shared payout or linked wallet, GitHub login or repository owner once between them), with an entry in the bounty that is no house entry and that the bounty did not refuse, and a paid entry fee, both by the reading's cut-off; never the bounties' creator nor an account merged with it, holding its agent wallets, sharing its identity or a network address with it in the last 30 days, or held or upheld by the distinct-entrant check, nor any account linked to one of those; the entry fees are those entrants' paid fees"
+      - "Counts: a development grade scores the reading taken when the entry was checked, and the development board ranks each entry on its bounties' latest counts, read again about every 15 minutes, a live and unofficial projection; at the deadline the house reads every final entry's bounties once, counting up to the deadline, and each final grade scores that reading; a bounty no longer found, cancelled or no longer public when read counts nothing"
+      - "Ranking: places go by the counted entrants at the deadline's reading, the most first, among the valid entries; an exact tie goes to the higher pot, then the earlier receipt; an entry none of whose bounties counts at the deadline's reading takes no place; the bounties' own entries' scores and the entry's build cost never move one"
+      - "Prizes: $50 for 1st place, $30 for 2nd, $15 for 3rd, $5 each for 4th to 10th and $3 each for 11th to 50th, one place per entrant; a paid place a house bot holds is not awarded, and no entry moves up to take it; a place no entry is left to take is not awarded"
+      - "Disqualification: bought entrants (paying, rewarding or refunding people to enter the bounties outside their own prizes, or a paid promotion that pays per entry) are disqualified by make.fun's organisers before the results are posted, with no automatic check; ordinary promotion that pays for reach, not per entry, is fine; a disqualified entry takes no reward and every entry below it moves up a place"
+      - "Transcripts: an entry is refused without the transcripts of the agent sessions that wrote its repository; the transcript gate checks the repository's files against them"
+      - "Payout: in USDC on Solana only, and the bounty's page says which way: when the reward is locked in make.fun's escrow program on Solana, every entry is signed by a Solana wallet linked to the entrant's account and each winner claims the prize from the escrow to that wallet once the result is posted, a prize nobody wins or claims going back to make.fun's reward wallet after the claim window; otherwise an entry needs no signature, each winner claims within 7 days (a legal name, country and tax form only once the winner's prizes from make.fun reach $2,000 in the calendar year), the claim is screened against the sanctions list and paid from make.fun's reward wallet, at once to a wallet linked by signature when the automatic checks clear it, an unclaimed prize passes to the next entry in the standings, and a prize nobody takes or claims stays in make.fun's reward wallet for later contests"
+    source: The counted entrants, pots and paid entry fees of the bounties each entry names, as make.fun's own database answered the house when it read every final entry's bounties at the final phase's lock, counted up to the deadline
+    verifier: make.fun looks up every bounty an entry names in its own database before grading and again at the deadline; the grader runs every entry twice and the sealed scorer checks its BOUNTY.json and the house's counts of its bounties; the results are published and resolved automatically
+    tie_break: "An exact tie on the counted entrants goes to the higher pot, then to the earlier receipt (exact ties on the rank key entrants go to the higher Pot (pot_usd), then the earlier receipt): the first of the tied entries submitted places first and the rest follow in the order they were submitted, each taking its own place's prize"
+    announce: "Final leaderboard within 1 day of the deadline unless a check holds it; in USDC on Solana, winners claim from make.fun's escrow program once the result is posted when the reward is locked there, otherwise within 7 days from make.fun's reward wallet"
+    metric:
+      name: Counted entrants
+      unit: entrants
+      better: higher
+
+harness:
+  kind: program/v1
+  runtimes: [node22]
+  input_data: null
+  scorer:
+    runtime: node22
+    entrypoint: scorer/score.ts
+    reference_data: reference
+  scorer_sha256: "e9f747d74a66e77a1708b442b5c5f328d6c07a5c03d2b9783f4fe6536c17e4b9"
+  reference_sha256: "ea7310450b11769a54e6f8ed391d26bd0673ddcb17dcef6769678483b83ca98d"
+  gate: valid
+  entry_link:
+    file: BOUNTY.json
+    platform: makefun
+    counts: bounty.counts.json
+    min_entry_fee_usd: 0.5
+    min_entrants: 1
+    creator_share: allowed
+
+phases:
+  - key: dev
+    title: Development
+    description: Each entry's bounties are counted in make.fun's own database when the entry is checked, and the board ranks the entry on their latest counts, read again about every 15 minutes while entries are open, with no new grade. It is a live, unofficial projection; the final ranks every entry on one reading of its bounties at the deadline alone.
+    starts_at: "2026-11-23T07:30:00Z"
+    ends_at: "2026-11-24T07:30:00Z"
+    scores: live
+  - key: final
+    title: Final
+    description: At the deadline the house reads every final entry's bounties once, when the final phase is locked, counting only who entered and paid by the deadline, and each final grade scores that reading; places go by the counted entrants of the bounties that count, the most first, and an entry none of whose bounties counts then takes no place. The results are published automatically once the final grades and the checks after them are done.
+    starts_at: "2026-11-24T07:30:00Z"
+    ends_at: "2026-11-24T13:30:00Z"
+    scores: after_finalize
+
+leaderboard:
+  title: Results
+  primary_index: 0
+  tie_break_index: 1
+  columns:
+    - {key: entrants, title: Entrants, index: 0, sorting: desc, precision: 0}
+    - {key: pot_usd, title: Pot, index: 1, sorting: desc, precision: 2, unit: usd}
+    - {key: bounties, title: Bounties, index: 2, sorting: desc, precision: 0}
+    - {key: entry_fees_usd, title: Entry fees, index: 3, sorting: desc, precision: 2, unit: usd}
+    - {key: valid, title: Valid, index: 4, sorting: desc, precision: 0}
+
+submission_rule:
+  rule: Force_Last
+  max_per_day: 5
+  max_total: 10
+  transcripts_required: true
+  strategy_note_required: false
+  license: osi
+  repo_created_after_open: true
+  house_only: false
+  authorship: 12
+
+prizes:
+  - {kind: placement, place: 1, amount_usd: 50, title: 1st place}
+  - {kind: placement, place: 2, amount_usd: 30, title: 2nd place}
+  - {kind: placement, place: 3, amount_usd: 15, title: 3rd place}
+  - {kind: placement, place: 4, amount_usd: 5, title: 4th place}
+  - {kind: placement, place: 5, amount_usd: 5, title: 5th place}
+  - {kind: placement, place: 6, amount_usd: 5, title: 6th place}
+  - {kind: placement, place: 7, amount_usd: 5, title: 7th place}
+  - {kind: placement, place: 8, amount_usd: 5, title: 8th place}
+  - {kind: placement, place: 9, amount_usd: 5, title: 9th place}
+  - {kind: placement, place: 10, amount_usd: 5, title: 10th place}
+  - {kind: placement, place: 11, amount_usd: 3, title: 11th place}
+  - {kind: placement, place: 12, amount_usd: 3, title: 12th place}
+  - {kind: placement, place: 13, amount_usd: 3, title: 13th place}
+  - {kind: placement, place: 14, amount_usd: 3, title: 14th place}
+  - {kind: placement, place: 15, amount_usd: 3, title: 15th place}
+  - {kind: placement, place: 16, amount_usd: 3, title: 16th place}
+  - {kind: placement, place: 17, amount_usd: 3, title: 17th place}
+  - {kind: placement, place: 18, amount_usd: 3, title: 18th place}
+  - {kind: placement, place: 19, amount_usd: 3, title: 19th place}
+  - {kind: placement, place: 20, amount_usd: 3, title: 20th place}
+  - {kind: placement, place: 21, amount_usd: 3, title: 21st place}
+  - {kind: placement, place: 22, amount_usd: 3, title: 22nd place}
+  - {kind: placement, place: 23, amount_usd: 3, title: 23rd place}
+  - {kind: placement, place: 24, amount_usd: 3, title: 24th place}
+  - {kind: placement, place: 25, amount_usd: 3, title: 25th place}
+  - {kind: placement, place: 26, amount_usd: 3, title: 26th place}
+  - {kind: placement, place: 27, amount_usd: 3, title: 27th place}
+  - {kind: placement, place: 28, amount_usd: 3, title: 28th place}
+  - {kind: placement, place: 29, amount_usd: 3, title: 29th place}
+  - {kind: placement, place: 30, amount_usd: 3, title: 30th place}
+  - {kind: placement, place: 31, amount_usd: 3, title: 31st place}
+  - {kind: placement, place: 32, amount_usd: 3, title: 32nd place}
+  - {kind: placement, place: 33, amount_usd: 3, title: 33rd place}
+  - {kind: placement, place: 34, amount_usd: 3, title: 34th place}
+  - {kind: placement, place: 35, amount_usd: 3, title: 35th place}
+  - {kind: placement, place: 36, amount_usd: 3, title: 36th place}
+  - {kind: placement, place: 37, amount_usd: 3, title: 37th place}
+  - {kind: placement, place: 38, amount_usd: 3, title: 38th place}
+  - {kind: placement, place: 39, amount_usd: 3, title: 39th place}
+  - {kind: placement, place: 40, amount_usd: 3, title: 40th place}
+  - {kind: placement, place: 41, amount_usd: 3, title: 41st place}
+  - {kind: placement, place: 42, amount_usd: 3, title: 42nd place}
+  - {kind: placement, place: 43, amount_usd: 3, title: 43rd place}
+  - {kind: placement, place: 44, amount_usd: 3, title: 44th place}
+  - {kind: placement, place: 45, amount_usd: 3, title: 45th place}
+  - {kind: placement, place: 46, amount_usd: 3, title: 46th place}
+  - {kind: placement, place: 47, amount_usd: 3, title: 47th place}
+  - {kind: placement, place: 48, amount_usd: 3, title: 48th place}
+  - {kind: placement, place: 49, amount_usd: 3, title: 49th place}
+  - {kind: placement, place: 50, amount_usd: 3, title: 50th place}
+
+# A house entry holds the place it finishes in, unpaid, and no entry moves up (the owner; .cosmos/rules/contest-design.mdc);
+# the Prizes section says so. This bundle names no house entry.
+house_holds_places: true
+
+limits:
+  cpus: 1
+  memory_mb: 1024
+  pids: 64
+  wall_budget_sec: 60
+
+min_authored_coverage: 0
+
+# Full auto (the header): the lock (the counts read in it), the grades, the publication and the resolve; autopay. Its
+# escrow is funded at open once the owner approves its lock on /admin: payouts auto then pays from the reward wallet only
+# when that escrow was never funded (server/competitions/load.ts escrowAtOpenIssues, escrowPayoutsIssue). Inert while a
+# draft.
+automation:
+  lifecycle: true
+  payouts: auto
+  escrow: at_open
