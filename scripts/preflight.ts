@@ -173,11 +173,32 @@ function checkProposalsAndPromotion(): void {
   }
 }
 
+function checkReadme(): void {
+  const readmePath = join(REPO_ROOT, 'README.md');
+  try {
+    const content = readFileSync(readmePath, 'utf8');
+    const hasBadge = content.includes('https://make.fun/badge/bounty-entrants-02.svg');
+    const hasLink = content.includes('https://make.fun/bounty/bounty-entrants-02');
+    if (hasBadge && hasLink) {
+      record('readme_makefun', 'PASS', 'README.md includes competition badge and make.fun link');
+    } else {
+      record(
+        'readme_makefun',
+        'FAIL',
+        'README.md must include https://make.fun/badge/bounty-entrants-02.svg and competition link'
+      );
+    }
+  } catch (err) {
+    record('readme_makefun', 'FAIL', `Cannot read README.md: ${(err as Error).message}`);
+  }
+}
+
 checkLicense();
 checkMainPurityAndDeterminism();
 checkBountyJson();
 checkOwnerClaimFile();
 checkProposalsAndPromotion();
+checkReadme();
 
 let failures = 0;
 for (const r of reports) {
