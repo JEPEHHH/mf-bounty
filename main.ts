@@ -6,6 +6,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { validateBountyFileBuffer } from './src/bounty-validator.ts';
 
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
 const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
@@ -19,6 +20,14 @@ function main(): void {
   } catch (err) {
     process.stderr.write(
       `Failed to read BOUNTY.json from ${SOURCE_PATH}: ${(err as Error).message}\n`
+    );
+    process.exit(1);
+  }
+
+  const validation = validateBountyFileBuffer(raw);
+  if (!validation.ok) {
+    process.stderr.write(
+      `Invalid BOUNTY.json at ${SOURCE_PATH}:\n${validation.errors.map((e) => `  - ${e}`).join('\n')}\n`
     );
     process.exit(1);
   }
