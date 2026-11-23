@@ -1,0 +1,20 @@
+{
+  "id": "bounty-3",
+  "idea_id": "frog-jazz-album-cover",
+  "planned_slug": "frog-jazz-album-cover-01",
+  "title": "Album Cover for a Jazz Trio Made Entirely of Frogs",
+  "category": "Growth",
+  "summary": "Design the album cover for an all-frog jazz trio; an AI judge playing a record shop owner picks the cover for the front window.",
+  "target_audience": "Designers, multimodal AI builders, and social creators who enjoy shareable visual competitions.",
+  "why_worth_fee": "Highly shareable visual output drives organic social discovery, $0.50 entry fee, and a growing pot fed by 70% of fees.",
+  "listing_track": "self_image",
+  "template": null,
+  "final_dataset": null,
+  "prize_usd": 5,
+  "entry_fee_usd": 0.5,
+  "creator_percent": 15,
+  "duration_hours": 18,
+  "final_hours": 1,
+  "planned_deposit_at": "2026-11-23T09:40:00Z",
+  "payout_split_usd": [3, 1.5, 0.5]
+}

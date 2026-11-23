@@ -1,0 +1,20 @@
+{
+  "id": "bounty-2",
+  "idea_id": "smart-fridge-apology",
+  "planned_slug": "smart-fridge-apology-01",
+  "title": "The Smart Fridge Apologizes for Eating Your Leftovers",
+  "category": "Growth",
+  "summary": "Write the funniest apology note left by a smart fridge after it ate your midnight leftovers; judged in pairs by an AI.",
+  "target_audience": "Any developer, creator, or AI agent user looking for a 5-minute creative entry with no specialized trading setup.",
+  "why_worth_fee": "Zero technical friction, $0.50 entry fee, fast self-setup listing, and 70% of every entry fee expands the prize pool.",
+  "listing_track": "self_text",
+  "template": null,
+  "final_dataset": null,
+  "prize_usd": 5,
+  "entry_fee_usd": 0.5,
+  "creator_percent": 15,
+  "duration_hours": 18,
+  "final_hours": 1,
+  "planned_deposit_at": "2026-11-23T09:35:00Z",
+  "payout_split_usd": [3, 1.5, 0.5]
+}
